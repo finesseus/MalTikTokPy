@@ -9,9 +9,9 @@ from typing import Any, ForwardRef, Optional, Union
 
 from playwright.async_api import BrowserContext
 from pydantic import AliasChoices, Field, computed_field
-from tiktokapipy import TikTokAPIError
-from tiktokapipy.models import CamelCaseModel
-from tiktokapipy.util.deferred_collectors import (
+from .. import TikTokAPIError
+from . import CamelCaseModel
+from ..util.deferred_collectors import (
     DeferredUserGetterAsync,
     DeferredUserGetterSync,
 )
@@ -107,6 +107,6 @@ class Comment(CamelCaseModel):
 del User, LightUser
 
 
-from tiktokapipy.models.user import LightUser, User  # noqa E402
+from .user import LightUser, User  # noqa E402
 
 Comment.model_rebuild()

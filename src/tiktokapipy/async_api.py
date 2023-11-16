@@ -10,19 +10,19 @@ from typing import Type, TypeVar, Union
 
 from playwright.async_api import Page, Route, TimeoutError, async_playwright
 from pydantic import ValidationError
-from tiktokapipy import TikTokAPIError, TikTokAPIWarning
-from tiktokapipy.api import TikTokAPI
-from tiktokapipy.models.challenge import Challenge
-from tiktokapipy.models.raw_data import (
+from . import TikTokAPIError, TikTokAPIWarning
+from .api import TikTokAPI
+from .models.challenge import Challenge
+from .models.raw_data import (
     ChallengePage,
     PrimaryResponseType,
     SentToLoginResponse,
     UserResponse,
     VideoPage,
 )
-from tiktokapipy.models.user import User, user_link
-from tiktokapipy.models.video import Video, is_mobile_share_link
-from tiktokapipy.util.queries import get_challenge_detail_async, get_video_detail_async
+from .models.user import User, user_link
+from .models.video import Video, is_mobile_share_link
+from .util.queries import get_challenge_detail_async, get_video_detail_async
 
 _DataModelT = TypeVar("_DataModelT", bound=PrimaryResponseType, covariant=True)
 """

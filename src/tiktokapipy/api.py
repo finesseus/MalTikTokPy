@@ -7,28 +7,65 @@ from __future__ import annotations
 import json
 import traceback
 import warnings
+from time import sleep
+import re
+
 from typing import Literal, Optional, Type, TypeVar, Union
 
 from playwright.sync_api import Page, Route, TimeoutError, sync_playwright
 from pydantic import ValidationError
-from tiktokapipy import ERROR_CODES, TikTokAPIError, TikTokAPIWarning
-from tiktokapipy.models.challenge import Challenge
-from tiktokapipy.models.raw_data import (
+from . import ERROR_CODES, TikTokAPIError, TikTokAPIWarning
+from .models.challenge import Challenge
+from .models.raw_data import (
     ChallengePage,
     PrimaryResponseType,
     SentToLoginResponse,
     UserResponse,
     VideoPage,
 )
-from tiktokapipy.models.user import User, user_link
-from tiktokapipy.models.video import Video, is_mobile_share_link
-from tiktokapipy.util.queries import get_challenge_detail_sync, get_video_detail_sync
+from .models.user import User, user_link
+from .models.video import Video, is_mobile_share_link
+from .util.queries import get_challenge_detail_sync, get_video_detail_sync
+
+from urllib.parse import urlparse
+
+async def intercept(route, request):
+    if request.resource_type in {'image', 'media', 'stylesheet', 'font'}:
+        await route.abort()
+    else:
+        await route.continue_()
 
 _DataModelT = TypeVar("_DataModelT", bound=PrimaryResponseType, covariant=True)
 """
 Generic used for data scraping.
 """
+def parse_proxy1(proxy_string):
+    """Parse a proxy string into its components."""
+    protocol, rest = proxy_string.split('://', 1)
+    user_pass, server_port = rest.split('@')
+    username, password = user_pass.split(':')
+    server, port = server_port.split(':')
+    thing =  {
+        'protocol': protocol,
+        'username': username,
+        'password': password,
+        'server': server,
+        'port': port
+    }
+    print(thing)
+    exit()
 
+def parse_proxy(proxy_str):
+    if not proxy_str:
+        return None
+    parsed = urlparse(proxy_str)
+    proxyInfo = {
+        "server": f"{parsed.scheme}://{parsed.hostname}:{parsed.port}",
+        "username": parsed.username,
+        "password": parsed.password
+    }
+    return proxyInfo
+    
 
 class TikTokAPI:
     """Synchronous API used to scrape data from TikTok"""
@@ -36,6 +73,7 @@ class TikTokAPI:
     def __init__(
         self,
         *,
+        proxy: Optional[str] = None,
         headless: bool = None,
         data_dump_file: str = None,
         navigation_timeout: float = 30,
@@ -62,6 +100,7 @@ class TikTokAPI:
             `BrowserType::launch() <https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch>`_.
         """
         self.headless = headless
+        self.proxy = parse_proxy(proxy)
         self.data_dump_file = data_dump_file
         self.context_kwargs = context_kwargs or {}
         self.navigation_timeout = navigation_timeout * 1000
@@ -76,8 +115,10 @@ class TikTokAPI:
 
     def __enter__(self) -> TikTokAPI:
         self._playwright = sync_playwright().start()
+
+        
         self._browser = self.playwright.chromium.launch(
-            headless=self.headless, **self.kwargs
+            headless=self.headless, proxy=self.proxy,
         )
 
         context_kwargs = self.context_kwargs
@@ -183,6 +224,7 @@ class TikTokAPI:
                     return route.continue_()
 
                 page.route("**/*", ignore_scripts)
+                # page.route('**/*', intercept)
                 page.goto(link_or_id, wait_until=None)
                 page.wait_for_selector("#SIGI_STATE", state="attached")
 
@@ -224,11 +266,67 @@ if (navigator.webdriver === false) {
                     return route.abort()
                 return route.continue_()
 
-            page.route("**/*", ignore_scripts)
+            # page.route("**/*", ignore_scripts)
+            # page.route('**/*', intercept)
             try:
+                # page.goto("https://www.google.com/search?q=tabitha+swatosh+tiktok")
+                # sleep(1000)
+
                 page.goto(link, wait_until=None)
+
+
+
+
+                # page.goto("https://www.google.com/search?q=tabitha+swatosh+tiktok")
+                # # page.goto('https://www.google.com/search?q=tabitha+swatosh+tiktok&btnI')
+
+                # # # Input search query and press Enter
+                # # page.fill('input[name="q"]', "Your Search Query Here")
+                # # sleep(1)
+                # # page.press('input[name="q"]', "Enter")
+                # # sleep(1)
+                # # # Wait for results to load
+                # # page.wait_for_selector("h3")
+                # # sleep(1)
+                # # # Click the first search result link
+                # # page.click("h3:first-child")
+                # sleep(10)
+                # links = page.locator('h3')
+                # print(links.count())
+                # import pkg_resources
+
+                # playwright_version = pkg_resources.get_distribution("playwright").version
+                # print(playwright_version)
+                # for i in range(links.count()):
+                #     print(links.nth(i))
+                #     stuff = links.nth(i).inner_html()
+                #     # pattern = r"url='(https?://[^']+)'"
+                #     # match = re.search(pattern, str(links.nth(i)))
+                #     # url = ''
+                #     # if match:
+                #     #     url = match.group(1)
+                #     #     print(url)
+                #     # else:
+                #     #     print("No URL found")
+                #     # if 'tabitaswatosh' in url:
+                #     #     # print(links.nth(i).url)
+                #     #     input('good?')
+                #     #     links.nth(i).click()
+                #     if '@tabithaswatosh' in stuff:
+                #         print("BOOOOO")
+                #         print(stuff)
+                #         links.nth(i).click()
+                #         break
+                # # sleep(10000)
+
+
+                # # page.goto(link, wait_until=None)
+                # # sleep(2)
+                # # page.reload()
+                # sleep(3)
                 page.wait_for_selector("#SIGI_STATE", state="attached")
                 content = page.content()
+
 
                 data = content.split(
                     '<script id="SIGI_STATE" type="application/json">'
@@ -312,6 +410,7 @@ if (navigator.webdriver === false) {
                 f"({ERROR_CODES[response.user_page.status_code]})"
             )
         name, user = list(response.user_module.users.items())[0]
+        
         user.stats = response.user_module.stats[name]
         user._api = self
 

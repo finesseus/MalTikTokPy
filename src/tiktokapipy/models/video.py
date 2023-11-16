@@ -8,9 +8,9 @@ from typing import Any, ForwardRef, List, Optional, Union
 
 from playwright.async_api import BrowserContext as AsyncBrowserContext
 from pydantic import AliasChoices, Field, computed_field
-from tiktokapipy import TikTokAPIError
-from tiktokapipy.models import CamelCaseModel, TitleCaseModel
-from tiktokapipy.util.deferred_collectors import (
+from .. import TikTokAPIError
+from . import CamelCaseModel, TitleCaseModel
+from ..util.deferred_collectors import (
     DeferredChallengeIterator,
     DeferredCommentIterator,
     DeferredUserGetterAsync,
@@ -85,7 +85,7 @@ class MusicData(CamelCaseModel):
     title: str
     play_url: Optional[str] = None
     author_name: Optional[str] = None
-    duration: int
+    # duration: int
     original: bool
     album: Optional[str] = None
 
@@ -265,9 +265,9 @@ class Video(LightVideo):
 del Challenge, LightChallenge, Comment, LightUser, User, UserStats
 
 
-from tiktokapipy.models.challenge import Challenge, LightChallenge  # noqa E402
-from tiktokapipy.models.comment import Comment  # noqa E402
-from tiktokapipy.models.user import LightUser, User, UserStats  # noqa E402
+from .challenge import Challenge, LightChallenge  # noqa E402
+from .comment import Comment  # noqa E402
+from .user import LightUser, User, UserStats  # noqa E402
 
 Video.model_rebuild()
 

@@ -6,11 +6,11 @@ Unprocessed data retrieved directly from TikTok
 from typing import Any, Dict, List, Optional, TypeVar, Union
 
 from pydantic import AliasPath, Field
-from tiktokapipy.models import CamelCaseModel, TitleCaseModel
-from tiktokapipy.models.challenge import Challenge, ChallengeStats
-from tiktokapipy.models.comment import Comment
-from tiktokapipy.models.user import User, UserStats
-from tiktokapipy.models.video import LightVideo, Video
+from . import CamelCaseModel, TitleCaseModel
+from .challenge import Challenge, ChallengeStats
+from .comment import Comment
+from .user import User, UserStats
+from .video import LightVideo, Video
 
 
 class UserModule(CamelCaseModel):

@@ -7,9 +7,9 @@ from typing import Any, ForwardRef, Optional, Union
 from urllib.parse import quote
 
 from pydantic import AliasChoices, Field, computed_field
-from tiktokapipy import TikTokAPIError
-from tiktokapipy.models import CamelCaseModel
-from tiktokapipy.util.deferred_collectors import DeferredItemListIterator
+from .. import TikTokAPIError
+from . import CamelCaseModel
+from ..util.deferred_collectors import DeferredItemListIterator
 
 LightVideo = ForwardRef("LightVideo")
 Video = ForwardRef("Video")
@@ -114,7 +114,7 @@ class User(LightUser):
 del LightVideo, Video
 
 
-from tiktokapipy.models.video import LightVideo, Video  # noqa E402
+from .video import LightVideo, Video  # noqa E402
 
 User.model_rebuild()
 

@@ -8,8 +8,8 @@ from urllib.parse import quote, urlencode
 
 from playwright.async_api import BrowserContext as AsyncContext
 from playwright.sync_api import BrowserContext as SyncContext
-from tiktokapipy import TikTokAPIError
-from tiktokapipy.util.signing import (
+from .. import TikTokAPIError
+from .signing import (
     sign_and_get_request_async,
     sign_and_get_request_sync,
 )

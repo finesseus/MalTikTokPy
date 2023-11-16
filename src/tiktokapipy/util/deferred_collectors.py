@@ -2,18 +2,20 @@ import abc
 import time
 import warnings
 from datetime import datetime
+import pytz
 from json import JSONDecodeError
 from typing import AsyncIterator, ForwardRef, Iterator, List, Literal, TypeVar, Union
 
 from playwright.async_api import BrowserContext as AsyncBrowserContext
 from playwright.sync_api import BrowserContext as SyncBrowserContext
-from tiktokapipy import TikTokAPIError, TikTokAPIWarning
-from tiktokapipy.util.queries import (
+from .. import TikTokAPIError, TikTokAPIWarning
+from ..util.queries import (
     get_challenge_detail_async,
     get_challenge_detail_sync,
     make_request_async,
     make_request_sync,
 )
+import os
 
 T = TypeVar("T")
 Challenge = ForwardRef("Challenge")
@@ -131,7 +133,7 @@ class DeferredCommentIterator(DeferredIterator[Comment]):
         self._video_id = video_id
 
     def _fetch_sync(self):
-        from tiktokapipy.models.raw_data import APIResponse
+        from ..models.raw_data import APIResponse
 
         raw = make_request_sync(
             "comment/list/", self._cursor, self._video_id, self._api.context
@@ -144,7 +146,7 @@ class DeferredCommentIterator(DeferredIterator[Comment]):
         self._cursor = converted.cursor
 
     async def _fetch_async(self):
-        from tiktokapipy.models.raw_data import APIResponse
+        from ..models.raw_data import APIResponse
 
         raw = await make_request_async(
             "comment/list/", self._cursor, self._video_id, self._api.context
@@ -174,7 +176,7 @@ class DeferredItemListIterator(DeferredIterator[Video]):
             self._cursor = int(time.time()) * 1000
 
     def _fetch_sync(self):
-        from tiktokapipy.models.raw_data import APIResponse
+        from ..models.raw_data import APIResponse
 
         # noinspection PyTypeChecker
         try:
@@ -207,8 +209,21 @@ class DeferredItemListIterator(DeferredIterator[Video]):
         self._cursor = converted.cursor
 
         for video in converted.item_list:
+            # print(video)
+            # print(type(converted.item_list))
+            # print(len(converted.item_list))
+            # print(video.comments)
+            # print('======')
+            # exit()
             try:
+                # utc = pytz.UTC
+                # start_date = os.environ.get("start_scrape_date")
+                # compare_date = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=utc)
+                # if self._api.video(video.id).create_time < compare_date:
+                #     self._has_more = False
+                #     break
                 self._collected_values.append(self._api.video(video.id))
+
             except TikTokAPIError:
                 warnings.warn(
                     f"Unable to grab video with id {video.id}",
@@ -217,7 +232,7 @@ class DeferredItemListIterator(DeferredIterator[Video]):
                 )
 
     async def _fetch_async(self):
-        from tiktokapipy.models.raw_data import APIResponse
+        from ..models.raw_data import APIResponse
 
         # noinspection PyTypeChecker
         try:
@@ -267,7 +282,7 @@ class DeferredChallengeIterator(Iterator[Challenge], AsyncIterator[Challenge]):
         self.head = 0
 
     def _fetch_sync(self):
-        from tiktokapipy.models.raw_data import ChallengePage
+        from ..models.raw_data import ChallengePage
 
         converted = ChallengePage.model_validate(
             get_challenge_detail_sync(
@@ -279,7 +294,7 @@ class DeferredChallengeIterator(Iterator[Challenge], AsyncIterator[Challenge]):
         self._collected_values.append(challenge)
 
     async def _fetch_async(self):
-        from tiktokapipy.models.raw_data import ChallengePage
+        from ..models.raw_data import ChallengePage
 
         converted = ChallengePage.model_validate(
             await get_challenge_detail_async(
