@@ -15,12 +15,15 @@ import random
 
 
 
-start_scrape_date = '2023-11-03'
-end_scrape_date = '2023-11-14'
+start_scrape_date = '2023-11-15'
+end_scrape_date = '2023-11-28'
 os.environ['end_scrape_date'] = end_scrape_date
 os.environ['start_scrape_date'] = start_scrape_date
 
 def main():
+    img_block = random.choice([True, False])
+    # print(img_block)
+    # exit()
     config.SESS = create_session()
     print("Created Session")
     total_vids_scraped = 0
@@ -37,7 +40,7 @@ def main():
 
             print(username)
             print(f'{len(accounts)} left to scrape')
-            res = scrape_account(username)
+            res = scrape_account(username, img_block)
             if res:
                 total_vids_scraped += res[0]
                 total_comments_scraped += res[1]
@@ -108,11 +111,11 @@ def transform_input(value):
         # Linearly scale value to the range [120, 500]
         return int(120 + (value / 1100) * (600 - 120))
 
-def scrape_account(username):
+def scrape_account(username, img_block):
     
     for i in range(6):
         try:
-            account_info, videos_to_scrape = run_with_timeout(worker_function_accounts, 360, False, username)
+            account_info, videos_to_scrape = run_with_timeout(worker_function_accounts, 360, False, username, img_block)
             print(account_info)
             if account_info == None:
                 print("Account info is none, time out, trying again")
@@ -217,6 +220,8 @@ def scrape_account(username):
 
     if account_info:
         update_user_and_metrics(username, account_info, end_scrape_date)
+    else:
+        checkout_user(username, None)
     return vids_stored, comments_scraped
 
     

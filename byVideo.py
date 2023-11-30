@@ -15,11 +15,11 @@ import config
 
 
 
-def get_video_and_comments(video_url):
+def get_video_and_comments(video_url, img_block=False):
     bestScrapeComments = []
     for j in range(5):
         try:
-            with makeTikTokApi() as api:
+            with makeTikTokApi(comments=True, img_block=img_block) as api:
                 video = api.video(video_url)
                 
                 post_url = video_url
@@ -62,8 +62,8 @@ def get_video_and_comments(video_url):
                     try:
                         for c in video.comments:
                             time.sleep(0.1)
-                            # if i == 100:
-                            #     break
+                            if i == 100:
+                                break
                             if i %50 == 0:
                                 print(f"Scraped {i} comments")
                             i += 1
@@ -92,7 +92,7 @@ def get_video_and_comments(video_url):
                         unique_ids.add(c['id'])
                 
                 print("Logging post attempt")
-                add_post_attempt(len(unique_ids), j + 1, post_url)
+                # add_post_attempt(len(unique_ids), j + 1, post_url)
 
             if errored_out:
                 print("Didn't get enough comments, trying again")
@@ -112,13 +112,12 @@ def get_video_and_comments(video_url):
     return video_info, video_metrics, bestScrapeComments
 
 
-# print(get_video_and_commeants('www.tiktok.com/@jadeybird/video/7293288687100595462'))
-
+# # print(get_video_and_comments('www.tiktok.com/@jadeybird/video/7293288687100595462'))
 # import csv
 # import os
 
 # # Ensure output directory exists
-# outputDir = '2023-11-01'
+# outputDir = '2023-11-16'
 # if not os.path.exists(outputDir):
 #     os.makedirs(outputDir)
 
@@ -126,21 +125,26 @@ def get_video_and_comments(video_url):
 # post_info_csv_path = os.path.join(outputDir, 'post_info.csv')
 # post_info_columns = ['url', 'author', 'date_posted', 'title', 'likes', 'id']
 # comment_info_columns = ['post', 'text', 'likes', 'postId', 'id', 'about_fashion']
-
-
-# with open('links.txt', 'r') as f:
+# youk = open('raminLinks11-16.txt', 'r').readlines()
+# h = set()
+# for y in youk:
+#     h.add(y.split(',')[0])
+# adjunct = 69
+# with open('11-16Out.txt', 'r') as f:
 #     lines = f.readlines()
-#     for index, l in enumerate(lines):
-#         print(index)
+#     for index, l in enumerate(lines[adjunct:]):
+#         print(adjunct+index)
+#         print(l)
 #         video_info, video_metrics, comment_data_list = get_video_and_comments(l.strip())
-        
+#         if l in (h):
+#             continue
 #         post_info = {
 #             'url': video_info['post_url'],
 #             'author': video_info['username'],
 #             'date_posted': video_info['date_posted'],
 #             'title': video_info['caption'],
 #             'likes': video_metrics['num_likes'],
-#             'id': index
+#             'id': index+adjunct
 #         }
 
 #         # Write post info to the CSV
@@ -157,14 +161,14 @@ def get_video_and_comments(video_url):
 #                 'post': video_info['post_url'],
 #                 'text': c['comment_text'],
 #                 'likes': c['num_likes'],
-#                 'postId': index,
+#                 'postId': adjunct+index,
 #                 'id': ic,
 #                 'about_fashion': 0
 #             }
 #             comment_row_list.append(row)
 
 #         # Write comment info to a CSV named with the post index
-#         comment_info_csv_path = os.path.join(outputDir, f'comments_{index}.csv')
+#         comment_info_csv_path = os.path.join(outputDir, f'comments_{index+adjunct}.csv')
 #         with open(comment_info_csv_path, 'w', newline='', encoding='utf-8') as file:
 #             writer = csv.DictWriter(file, fieldnames=comment_info_columns)
 #             writer.writeheader()

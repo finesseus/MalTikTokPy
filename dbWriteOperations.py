@@ -12,7 +12,8 @@ def file_to_list_of_strings(filename):
 
 def add_accounts(fileName, source):
     account_list = file_to_list_of_strings(fileName)
-    
+    os.environ['AWS_SECRET_ACCESS_KEY'] = 'UlI41MxIytu49/IC4pfaOtLKKqM66p9bFmh2B+NX'
+    os.environ['AWS_ACCESS_KEY_ID'] = 'AKIAXPESWFETSYLBOIP3'
     config.SESS = create_session()
     config.BASE = setup_database(config.SESS)
     TTUsers = config.BASE.classes.ttusers
@@ -31,6 +32,44 @@ def add_accounts(fileName, source):
     print(len(account_list))
     print(len(accounts_to_insert))
     input()
+
+    new_accounts = [
+        {
+            'username': account,
+            'account_discovered_by': source,
+            'date_inserted': current_time
+        }
+        for account in accounts_to_insert
+    ]
+
+    # Use the bulk_insert_mappings method for more efficient bulk inserts
+    config.SESS.bulk_insert_mappings(TTUsers, new_accounts)
+    
+    # Commit the changes
+    config.SESS.commit()
+
+    query = config.SESS.query(TTUsers)
+    print(f"New total # of accounts {query.count()}")
+
+def add_account(account_name, source):
+    os.environ['AWS_SECRET_ACCESS_KEY'] = 'UlI41MxIytu49/IC4pfaOtLKKqM66p9bFmh2B+NX'
+    os.environ['AWS_ACCESS_KEY_ID'] = 'AKIAXPESWFETSYLBOIP3'
+    config.SESS = create_session()
+    config.BASE = setup_database(config.SESS)
+    TTUsers = config.BASE.classes.ttusers
+
+    # Fetch existing usernames from the database that match the account_list
+    existing_accounts = config.SESS.query(TTUsers.username).filter(TTUsers.username.in_(account_list)).all()
+    if account_name in existing_accounts:
+        print('Already have account, continuing')
+    existing_accounts_set = set([item[0] for item in existing_accounts])
+    
+
+    # Filter out existing accounts from the account_list
+    accounts_to_insert = set()
+    accounts_to_insert.add(account_name)
+    
+    current_time = datetime.now()
 
     new_accounts = [
         {
@@ -150,10 +189,11 @@ def add_comments(comment_data_list):
 
 def checkout_user(username, scrape_end):
     TTUsers = config.BASE.classes.ttusers
-    current_time = datetime.utcnow()
+    print("ab to checkout")
     config.SESS.query(TTUsers).filter(TTUsers.username == username).update({
         TTUsers.pulling_data_last_started: scrape_end,
     })
+    print('checked out')
 
 def update_user_and_metrics(username, metrics, scrape_end, accountDeleted=False, accountPrivate=False):
     TTUsers = config.BASE.classes.ttusers

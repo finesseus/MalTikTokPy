@@ -61,10 +61,10 @@ def process_video(video):
 
     return video_info, video_metrics
 
-def getAccountInfo(username):
+def getAccountInfo(username, img_block):
     
     # p = None
-    with makeTikTokApi() as api:
+    with makeTikTokApi(img_block=img_block) as api:
         try:
             account = api.user(username, video_limit=15)
         except Exception as e:
