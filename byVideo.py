@@ -11,105 +11,132 @@ from datetime import datetime
 import traceback
 from dbWriteOperations import add_post_attempt
 import config
+import multiprocessing
+from func_timeout import func_timeout
+from func_timeout import func_timeout, FunctionTimedOut
 
 
-
-
-def get_video_and_comments(video_url, img_block=False):
-    bestScrapeComments = []
-    for j in range(5):
+def get_video_and_comments(video_url, num_comments, img_block=False):
+    timeout = min(num_comments/7, 300)
+    timeout = max(timeout, 30)
+    bestRes = None
+    for i in range(10):
         try:
-            with makeTikTokApi(comments=True, img_block=img_block) as api:
-                video = api.video(video_url)
-                
-                post_url = video_url
-                username = video.author.unique_id
-                date_posted = video.create_time
-                img_urls = []
-                if video.image_post:
-                    for im in video.image_post.images:
-                        img_urls.append(im.image_url.url_list[0])
-                else:
-                    img_urls = [video.video.cover, video.video.origin_cover]
-                caption = video.desc
-                hashtags = []
-                if video.challenges:
-                    hashtags = [c.title for c in video.challenges]
-                video_info = {
-                    'post_url': video_url,
-                    'username': username,
-                    'date_posted': date_posted,
-                    'img_urls': img_urls,
-                    'caption': caption,
-                    'hashtags': hashtags
-                }
-                video_metrics = {
-                    'date_posted': date_posted,
-                    'date_collected': datetime.utcnow(),
-                    'post_url': video_url,
-                    'num_likes': abs(video.stats.digg_count),
-                    'num_shares': abs(video.stats.share_count),
-                    'num_comments': abs(video.stats.comment_count),
-                    'num_views': abs(video.stats.play_count),
-                    'num_bookmarks': abs(video.stats.collect_count)
-                }
-                
-
-                i = 0
-                comment_data_list = []
-                errored_out = False
-                if video.stats.comment_count > 0:
-                    try:
-                        for c in video.comments:
-                            time.sleep(0.1)
-                            if i == 100:
-                                break
-                            if i %50 == 0:
-                                print(f"Scraped {i} comments")
-                            i += 1
-
-                            comment_data = {
-                                'comment_text': c.text[:config.CAPTION_MAX_LENGTH],
-                                'post_url': video_url,
-                                'num_likes': c.digg_count,
-                                'commenter_username': c.user.unique_id,
-                                'date_collected': datetime.utcnow(),
-                                'id': c.id
-                            }
-                            comment_data_list.append(comment_data)
-                    except Exception as e:
-                        print('=====')
-                        print("Error iterating through comments")
-                        traceback.print_exc()
-                        print(e)
-                        print('=====')
-                        errored_out = True
-                if len(bestScrapeComments) < len(comment_data_list):
-                    bestScrapeComments = comment_data_list
-                unique_ids = set()
-                for c in comment_data_list:
-                    if c['id'] not in unique_ids:
-                        unique_ids.add(c['id'])
-                
-                print("Logging post attempt")
-                # add_post_attempt(len(unique_ids), j + 1, post_url)
-
-            if errored_out:
-                print("Didn't get enough comments, trying again")
-                continue
-            else:
-                break
-        except Exception as e:
-            if j == 4:
-                print(f"Error collecting info for {video_url} video info, giving up on try {j + 1}")
-                return None, None, None
-            print('====')
-            print("Exception occurred:", e)
-            traceback.print_exc()
-            print('====')
+            
+            video_info, video_metrics, bestScrapeComments, errored_out = func_timeout(timeout, get_video_and_comments_workhorse,args=(video_url, img_block))
+            if video_info != None:
+                if bestRes == None and video_info != None:
+                    bestRes = (video_info, video_metrics, bestScrapeComments)
+                if len(bestScrapeComments) >= 2500 or not errored_out:
+                    return video_info, video_metrics, bestScrapeComments
+                elif len(bestScrapeComments) > len(bestRes[2]):
+                    bestRes = (video_info, video_metrics, bestScrapeComments)
+           
+        except FunctionTimedOut as u:
+            print("timeout in comment scrape")
             continue
+    if bestRes == None:
+        return None, None, None
+    else:
+        return bestRes
+
+def get_video_and_comments_workhorse(video_url, img_block=False):
+    bestScrapeComments = []
+    try:
+        with makeTikTokApi(comments=True, img_block=img_block) as api:
+            video = api.video(video_url)
+
+            # print(video)
+            # print('---')
+            # exit()
+            print('loaded video')
+            
+            username = video.author.unique_id
+            date_posted = video.create_time
+            img_urls = []
+            if video.image_post:
+                for im in video.image_post.images:
+                    img_urls.append(im.image_url.url_list[0])
+            else:
+                img_urls = [video.video.cover, video.video.origin_cover]
+            caption = video.desc
+            hashtags = []
+            if video.challenges:
+                hashtags = [c.title for c in video.challenges]
+            video_info = {
+                'post_url': video_url,
+                'username': username,
+                'date_posted': date_posted,
+                'img_urls': img_urls,
+                'caption': caption,
+                'hashtags': hashtags
+            }
+            video_metrics = {
+                'date_posted': date_posted,
+                'date_collected': datetime.utcnow(),
+                'post_url': video_url,
+                'num_likes': abs(video.stats.digg_count),
+                'num_shares': abs(video.stats.share_count),
+                'num_comments': abs(video.stats.comment_count),
+                'num_views': abs(video.stats.play_count),
+                'num_bookmarks': abs(video.stats.collect_count)
+            }
+            
+
+            i = 0
+            comment_data_list = []
+            errored_out = False
+
+            
+
+            
+
+            if video.stats.comment_count > 0:
+
+                try:
+                    for c in video.comments:
+                        # time.sleep(0.1)
+                        if i == 5000:
+                            break
+                        if i %25 == 0:
+                            print(f"Scraped {i} comments")
+                        i += 1
+
+                        comment_data = {
+                            'comment_text': c.text[:config.CAPTION_MAX_LENGTH],
+                            'post_url': video_url,
+                            'num_likes': c.digg_count,
+                            'commenter_username': c.user.unique_id,
+                            'date_collected': datetime.utcnow(),
+                            'id': c.id
+                        }
+                        comment_data_list.append(comment_data)
+                except Exception as e:
+                    print('=====')
+                    print("Error iterating through comments")
+                    traceback.print_exc()
+                    print(e)
+                    print('=====')
+                    errored_out = True
+            if len(bestScrapeComments) < len(comment_data_list):
+                bestScrapeComments = comment_data_list
+            unique_ids = set()
+            for c in comment_data_list:
+                if c['id'] not in unique_ids:
+                    unique_ids.add(c['id'])
+            
+            print("Logging post attempt")
+            # add_post_attempt(len(unique_ids), j + 1, post_url)
+
+    except Exception as e:
+        print(e)
+        return None, None, None, None
+        
     print('ab to return')
-    return video_info, video_metrics, bestScrapeComments
+    return video_info, video_metrics, bestScrapeComments, errored_out
+
+# get_video_and_comments('www.tiktok.com/@noahbeck/video/7303428892226768158')
+# get_video_and_comments('https://www.tiktok.com/@fashiontiktok7/video/6820581804928470278')
 
 
 # # print(get_video_and_comments('www.tiktok.com/@jadeybird/video/7293288687100595462'))

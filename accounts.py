@@ -92,6 +92,7 @@ def getAccountInfo(username, img_block):
         
         videos_to_scrape = []
         print(f"Scraping videos for {username}")
+        print(type(account.videos))
         for v in account.videos:
             video_info, video_metrics = process_video(v)
             videos_to_scrape.append((video_info, video_metrics))

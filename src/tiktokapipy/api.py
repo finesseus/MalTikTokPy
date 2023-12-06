@@ -9,7 +9,7 @@ import traceback
 import warnings
 from time import sleep
 import re
-
+import os
 from typing import Literal, Optional, Type, TypeVar, Union
 
 from playwright.sync_api import Page, Route, TimeoutError, sync_playwright
@@ -29,11 +29,12 @@ from .util.queries import get_challenge_detail_sync, get_video_detail_sync
 
 from urllib.parse import urlparse
 
-async def intercept(route, request):
-    if request.resource_type in {'image'}:
-        await route.abort()
-    else:
-        await route.continue_()
+if os.environ.get("img_block") == 'True':
+    async def intercept(route, request):
+        if request.resource_type in {'image'}:
+            await route.abort()
+        else:
+            await route.continue_()
 
 _DataModelT = TypeVar("_DataModelT", bound=PrimaryResponseType, covariant=True)
 """
@@ -224,10 +225,11 @@ class TikTokAPI:
                     return route.continue_()
 
                 page.route("**/*", ignore_scripts)
-                page.route("**/*", lambda route: route.abort()
-                    if route.request.resource_type in ["image", "media"]
-                    else route.continue_()
-                    )
+                if os.environ.get("img_block") == 'True':
+                    page.route("**/*", lambda route: route.abort()
+                        if route.request.resource_type in ["image", "media"]
+                        else route.continue_()
+                        )
                 page.goto(link_or_id, wait_until=None)
                 page.wait_for_selector("#SIGI_STATE", state="attached")
 
@@ -271,10 +273,11 @@ if (navigator.webdriver === false) {
 
             # page.route("**/*", ignore_scripts)
             # page.route('**/*', intercept)
-            page.route("**/*", lambda route: route.abort()
-                if route.request.resource_type in ["image", "media"]
-                else route.continue_()
-                )
+            if os.environ.get("img_block") == 'True':
+                page.route("**/*", lambda route: route.abort()
+                    if route.request.resource_type in ["image", "media"]
+                    else route.continue_()
+                    )
 
             try:
                 # page.goto("https://www.google.com/search?q=tabitha+swatosh+tiktok")

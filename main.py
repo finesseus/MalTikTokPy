@@ -12,16 +12,22 @@ import traceback
 import time
 import multiprocessing
 import random
+from pyvirtualdisplay import Display
 
 
 
-start_scrape_date = '2023-11-15'
-end_scrape_date = '2023-11-28'
+start_scrape_date = '2023-11-29'
+# 28
+end_scrape_date = '2023-12-02'
 os.environ['end_scrape_date'] = end_scrape_date
 os.environ['start_scrape_date'] = start_scrape_date
 
+# display = Display(visible=0, size=(1366, 768))
+# display.start()
+
 def main():
     img_block = random.choice([True, False])
+    os.environ['img_block'] = str(img_block)
     # print(img_block)
     # exit()
     config.SESS = create_session()
@@ -39,7 +45,6 @@ def main():
             checkout_user(accounts[0].username, end_scrape_date)
 
             print(username)
-            print(f'{len(accounts)} left to scrape')
             res = scrape_account(username, img_block)
             if res:
                 total_vids_scraped += res[0]
@@ -114,6 +119,7 @@ def transform_input(value):
 def scrape_account(username, img_block):
     
     for i in range(6):
+        time.sleep(random.randint(15, 70))
         try:
             account_info, videos_to_scrape = run_with_timeout(worker_function_accounts, 360, False, username, img_block)
             print(account_info)
@@ -192,7 +198,7 @@ def scrape_account(username, img_block):
         print(f'Num comments is {num_comments}')
 
         for i in range(3):
-            vidStuf = get_video_and_comments(link)
+            vidStuf = get_video_and_comments(link, num_comments, img_block=img_block)
             print("here")
             if vidStuf[0] == None:
                 print("Time out, trying again")
