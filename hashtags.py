@@ -55,7 +55,8 @@ def extract_video_dicts(videos):
         video_dicts.append(video_dict)
     return video_dicts
 
-hashtags = ['ootd', 'grwm', 'fashion', 'outfitinspo', 'fallfahsion', 'stitch', 'style', 'itgirl', 'outfitideas', 'styleinspo', 'fashiontiktok', 'tiktokfashion', 'outfit', 'falloutfits', 'fashioninspo', 'fit', 'fitcheck', 'styling', 'outfits', 'aesthetic', 'tiktokshop', 'dress', 'fashiontok', 'sewing', 'tryonhaul']
+hashtags = ['ootd']
+# ['grwm', 'fashion', 'outfitinspo', 'fallfahsion', 'stitch', 'style', 'itgirl', 'outfitideas', 'styleinspo', 'fashiontiktok', 'tiktokfashion', 'outfit', 'falloutfits', 'fashioninspo', 'fit', 'fitcheck', 'styling', 'outfits', 'aesthetic', 'tiktokshop', 'dress', 'fashiontok', 'sewing', 'tryonhaul']
 
 for h in hashtags:
     with open(f'hashtagOutputs/{h}.txt', 'w+') as out:

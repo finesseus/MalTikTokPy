@@ -4,7 +4,7 @@ from db import create_session, setup_database
 from dbWriteOperations import update_user_and_metrics, add_post, add_comments, checkout_user
 from dbReadOperations import get_accounts_ready_to_scrape, get_post
 from accounts import getAccountInfo
-from byVideo import get_video_and_comments
+from byVideoRaminLinks import get_video_and_comments
 import os
 from datetime import datetime
 import pytz
@@ -20,8 +20,10 @@ end_scrape_date = '2023-11-28'
 os.environ['end_scrape_date'] = end_scrape_date
 os.environ['start_scrape_date'] = start_scrape_date
 
+
 def main():
     img_block = random.choice([True, False])
+    img_block = True
     # print(img_block)
     # exit()
     config.SESS = create_session()
