@@ -10,10 +10,8 @@ async def save_video(video):
     async with aiohttp.ClientSession() as session:
         async with session.get(video.video.download_addr) as resp:
             video_content = await resp.read()
-            # Extract file extension from the video URL
             _, file_extension = os.path.splitext(video.video.download_addr)
             file_name = f"downloaded_video{file_extension}"
-            # Save the video to a file
             with open(file_name, "wb") as file:
                 file.write(video_content)
             return file_name

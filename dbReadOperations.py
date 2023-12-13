@@ -1,6 +1,6 @@
 import config
 import datetime
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, literal_column
 
 
 
@@ -18,7 +18,10 @@ def get_accounts_ready_to_scrape(scrape_end):
                 TTUsers.pulling_data_last_started < scrape_end,
                 TTUsers.pulling_data_last_started == None
             )
-        ).order_by(func.random()).limit(1).all()
+        ).order_by(
+            func.coalesce(TTUsers.pulling_data_last_started, literal_column("'1000-01-01'"))
+        ).limit(1).all()
+
     return existing_accounts
 
 def get_post(post_url):
