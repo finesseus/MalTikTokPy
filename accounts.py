@@ -66,7 +66,7 @@ def getAccountInfo(username, img_block):
     # p = None
     with makeTikTokApi(img_block=img_block) as api:
         try:
-            account = api.user(username, video_limit=15)
+            account = api.user(username, video_limit=12)
         except Exception as e:
             error_message = str(e)
             print(error_message)

@@ -12,24 +12,23 @@ import traceback
 import time
 import multiprocessing
 import random
-from pyvirtualdisplay import Display
-from utils import wait_until_15_to_25_minutes
+import sys
+import select
+import argparse
+
 
 
 start_scrape_date = '2023-11-29'
 # 28
-end_scrape_date = '2023-12-12'
-os.environ['end_scrape_date'] = end_scrape_date
-os.environ['start_scrape_date'] = start_scrape_date
+end_scrape_date = '2023-12-02'
 
 # display = Display(visible=0, size=(1366, 768))
 # display.start()
 
-def main():
-    img_block = random.choice([True, False])
-    os.environ['img_block'] = str(img_block)
-    # print(img_block)
-    # exit()
+def run_scraper(start_scrape_date, end_scrape_date, pipe):
+    os.environ['end_scrape_date'] = end_scrape_date
+    os.environ['start_scrape_date'] = start_scrape_date
+
     config.SESS = create_session()
     print("Created Session")
     total_vids_scraped = 0
@@ -39,43 +38,50 @@ def main():
         config.BASE = setup_database(config.SESS)
         accounts = get_accounts_ready_to_scrape(end_scrape_date)
         print(f'{len(accounts)} accounts fetched for scraping')
-        while len(accounts):
+        if len(accounts):
             # int(len(accounts)/2)
             username = accounts[0].username
             checkout_user(accounts[0].username, end_scrape_date)
 
-            print(username)
-            res = scrape_account(username, img_block)
-            if res:
-                total_vids_scraped += res[0]
-                total_comments_scraped += res[1]
+            print(f'About to scrape {username}')
+            res = scrape_account(username)
+        else:
+            print('No accounts to scrape')
+            exit(1)
+
+def check_for_command(timeout=1):
+    """Check if there is a command available to read."""
+    while True:
+        ready, _, _ = select.select([sys.stdin], [], [], timeout)
+        if ready:
+            command = sys.stdin.readline()
+            if not command:  # Check for end-of-file
+                print("End of input stream detected. Exiting.")
+                sys.exit(0)  # Exit the program or handle as appropriate
+
+            command = command.strip()
+            if command == "pause":
+                print("Subprocess paused. Waiting for 'resume' command...")
+                while True:
+                    inner_ready, _, _ = select.select([sys.stdin], [], [], timeout)
+                    if inner_ready:
+                        inner_command = sys.stdin.readline().strip()
+                        if inner_command == "resume":
+                            print("Subprocess resumed.")
+                            return
+                    # Optional: Add a sleep here to prevent tight looping
             else:
-                print(f"Fail for {username}")
-            accounts = get_accounts_ready_to_scrape(end_scrape_date)
-    print(f'Finished at {time.time() - start_time}')
-    print(f'Total videos scraped: {total_vids_scraped}')
-    print(f'Total comments scraped: {total_comments_scraped}')
+                return command
+        else:
+            # If no command is ready, break the loop to resume normal operation
+            break
 
-    print('main')
-
-# def worker_function_accounts(queue, *args):
-#     queue.put((None, None))
-#     return
-#     try:
-#         account_info, videos_to_scrape = getAccountInfo(*args)
-#     except Exception as e:        
-#         queue.put((None, None))
-#         return
-    
-#     queue.put((account_info, videos_to_scrape))
 def worker_function_accounts(queue, *args):
-    # queue.put((None, None))
     try:
         account_info, videos_to_scrape = getAccountInfo(*args)
         queue.put((account_info, videos_to_scrape))
         time.sleep(0.5)
     except Exception as e:
-        # Log or print the exception for debugging
         print(f"Error in worker_function_accounts: {e}")
         queue.put((None, None))
 
@@ -85,7 +91,6 @@ def worker_function_videos(queue, *args):
         queue.put((video_info, video_metrics, comment_data_list))
         time.sleep(0.5)
     except Exception as e:
-        # Log or print the exception for debugging
         print(f"Error in worker_function_videos: {e}")
         queue.put((None, None, None))
 
@@ -94,37 +99,25 @@ def run_with_timeout(func, timeout, return_three, *args):
     process = multiprocessing.Process(target=func, args=(queue,) + args)
     process.start()
     process.join(timeout=timeout)
-    print(func)
-    print(timeout)
-    print(return_three)
+
     if process.is_alive():
         print("Function ran too long, terminating it.")
         process.terminate()
         if return_three:
             return None, None, None
-        return None, None  # Or some default values or raise an exception
+        return None, None
     else:
         print('Ab to get')
         return queue.get()
 
-def transform_input(value):
-    if value >= 1100:
-        return 600
-    elif value <= 0:
-        return 120
-    else:
-        # Linearly scale value to the range [120, 500]
-        return int(120 + (value / 1100) * (600 - 120))
-
-def scrape_account(username, img_block):
+def scrape_account(username):
     
-    for i in range(8):
-        time.sleep(random.randint(10, 35))
+    for i in range(2):
+        time.sleep(random.randint(15, 30))
         try:
-            account_info, videos_to_scrape = run_with_timeout(worker_function_accounts, 360, False, username, img_block)
+            account_info, videos_to_scrape = run_with_timeout(worker_function_accounts, 300, False, username, img_block)
             print(account_info)
             if account_info == None:
-                wait_until_15_to_25_minutes()
                 print("Account info is none, time out, trying again")
                 continue
             deleted = 'account_deleted' in account_info
@@ -140,32 +133,32 @@ def scrape_account(username, img_block):
 
             if not len(videos_to_scrape) and account_info['num_posts'] != 0:
                 print("No Videos to scrape, trying again")
-                wait_until_15_to_25_minutes()
                 continue
             break
         except Exception as e:
             print(e)
             stacktrace_str = traceback.format_exc()
             print(stacktrace_str)
-            if i == 6:
-                time.sleep(100)
-            if i == 7:
+            if i == 1:
                 print(f"Error getting {username} account info, giving up on try {i + 1}")
                 return
             print(f"Error getting {username} account info, trying again")
             print(e)
-            wait_until_15_to_25_minutes()
             continue
+    if account_info:
+        update_user_and_metrics(username, account_info, end_scrape_date)
+        return videos_to_scrape
+    else:
+        checkout_user(username, None)
+        return
     
-    vids_stored = 0
-    comments_scraped = 0
+def scrape_video(videos_to_scrape):
     videos_to_use = []
     if videos_to_scrape:
         
         print(f'{len(videos_to_scrape)} videos fetched')
         if len(videos_to_scrape):
             for v in videos_to_scrape:
-                wait_until_15_to_25_minutes()
                 video_info, video_metrics = v
                 # video_url = f'www.tiktok.com/@{username}/video/{v["id"]}'
                 
@@ -204,7 +197,7 @@ def scrape_account(username, img_block):
         print(f'Num comments is {num_comments}')
 
         for i in range(3):
-            vidStuf = get_video_and_comments(link, num_comments, img_block=img_block)
+            vidStuf = get_video_and_comments(link, num_comments)
             print("here")
             if vidStuf[0] == None:
                 print("Time out, trying again")
@@ -230,16 +223,31 @@ def scrape_account(username, img_block):
         else:
             print('Failed to get info for {video_url}')
 
-    if account_info:
-        update_user_and_metrics(username, account_info, end_scrape_date)
-    else:
-        checkout_user(username, None)
-    return vids_stored, comments_scraped
 
+def main(start_scrape_date, end_scrape_date, get_videos):
+    config.SESS = create_session()
+    print("Created Session")
+    total_vids_scraped = 0
+    total_comments_scraped = 0
+    start_time = time.time()
+    with config.SESS:
+        config.BASE = setup_database(config.SESS)
+        if get_videos:
+            
+            print('Getting videos')
+            scrape_video(videos_to_scrape)
+        else:
+            print('Getting accounts')
+            accounts = get_accounts_ready_to_scrape(end_scrape_date)
+            username = accounts[0].username
+            scrape_account(username)
     
-
-    
-
-
 if __name__ == "__main__":
-    main()
+
+    parser = argparse.ArgumentParser(description='Run a web scraper with specified parameters.')
+    parser.add_argument('start_scrape_date', type=str, help='The start date for scraping.')
+    parser.add_argument('end_scrape_date', type=str, help='The end date for scraping.')
+    parser.add_argument('--get_videos', action='store_true', help='Flag to scrape videos instead of data.')
+    args = parser.parse_args()
+
+    main(args.start_scrape_date, args.end_scrape_date, args.get_videos)
