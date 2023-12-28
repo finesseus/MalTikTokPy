@@ -190,7 +190,7 @@ def add_comments(comment_data_list):
 def checkout_user(username, scrape_end):
     TTUsers = config.BASE.classes.ttusers
     config.SESS.query(TTUsers).filter(TTUsers.username == username).update({
-        TTUsers.pulling_data_last_started: scrape_end,
+        TTUsers.date_follows_last_collected: scrape_end,
     })
     config.SESS.commit()
 

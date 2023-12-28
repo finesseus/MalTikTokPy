@@ -4,6 +4,7 @@ import csv
 import warnings
 from src.tiktokapipy import TikTokAPIWarning
 import os
+import config
 import random
 from urllib.parse import urlparse
 import pandas as pd
@@ -14,6 +15,10 @@ import config
 import multiprocessing
 from func_timeout import func_timeout
 from func_timeout import func_timeout, FunctionTimedOut
+from dbWriteOperations import add_post, add_comments
+from dbReadOperations import get_post_fuzzy
+from db import create_session, setup_database
+
 
 
 def get_video_and_comments(video_url, num_comments, img_block=False):
@@ -27,7 +32,7 @@ def get_video_and_comments(video_url, num_comments, img_block=False):
             if video_info != None:
                 if bestRes == None and video_info != None:
                     bestRes = (video_info, video_metrics, bestScrapeComments)
-                if len(bestScrapeComments) >= 2500 or not errored_out:
+                if len(bestScrapeComments) >= 2000 or not errored_out:
                     return video_info, video_metrics, bestScrapeComments
                 elif len(bestScrapeComments) > len(bestRes[2]):
                     bestRes = (video_info, video_metrics, bestScrapeComments)
@@ -96,7 +101,7 @@ def get_video_and_comments_workhorse(video_url, img_block=False):
                 try:
                     for c in video.comments:
                         # time.sleep(0.1)
-                        if i == 5000:
+                        if i == 3000:
                             break
                         if i %25 == 0:
                             print(f"Scraped {i} comments")
@@ -134,6 +139,24 @@ def get_video_and_comments_workhorse(video_url, img_block=False):
         
     print('ab to return')
     return video_info, video_metrics, bestScrapeComments, errored_out
+
+
+if __name__ == '__main__':
+    config.SESS = create_session()
+    config.BASE = setup_database(config.SESS)
+    videoLinks = open('12-14Out.txt', 'r').readlines()[25:37]
+    for v in videoLinks:
+        print(v)
+        hasPost = get_post_fuzzy(v.strip())
+        if hasPost is not None:
+            print('already has post')
+            time.sleep(2)
+            continue
+        video_info, video_metrics, bestScrapeComments = get_video_and_comments(v.strip(), 4000)
+        add_post(video_info, video_metrics)
+        print('added posts')
+        add_comments(bestScrapeComments)
+# get_video_and_comments('https://www.tiktok.com/@jadan.s.m_zay/video/7312166918700453152', 1000)
 
 # get_video_and_comments('www.tiktok.com/@noahbeck/video/7303428892226768158')
 # get_video_and_comments('https://www.tiktok.com/@fashiontiktok7/video/6820581804928470278')

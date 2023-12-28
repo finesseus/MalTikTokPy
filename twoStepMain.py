@@ -15,9 +15,9 @@ import random
 from utils import wait_until_15_to_25_minutes
 
 
-start_scrape_date = '2023-11-29'
+start_scrape_date = '2023-12-13'
 # 28
-end_scrape_date = '2023-12-12'
+end_scrape_date = '2023-12-27'
 os.environ['end_scrape_date'] = end_scrape_date
 os.environ['start_scrape_date'] = start_scrape_date
 
@@ -41,16 +41,13 @@ def main():
         print(f'{len(accounts)} accounts fetched for scraping')
         while len(accounts):
             # int(len(accounts)/2)
-            username = accounts[0].username
+            # random.shuffle(accounts)
+            username = accounts[-1].username
             checkout_user(accounts[0].username, end_scrape_date)
 
             print(username)
-            res = scrape_account(username, img_block)
-            if res:
-                total_vids_scraped += res[0]
-                total_comments_scraped += res[1]
-            else:
-                print(f"Fail for {username}")
+            scrape_account(username, img_block)
+            
             accounts = get_accounts_ready_to_scrape(end_scrape_date)
     print(f'Finished at {time.time() - start_time}')
     print(f'Total videos scraped: {total_vids_scraped}')
@@ -106,90 +103,46 @@ def transform_input(value):
         # Linearly scale value to the range [120, 500]
         return int(120 + (value / 1100) * (600 - 120))
 
+
+
+
+# Function to extract the numeric part from the URL
+def get_numeric_part(url):
+    try:
+        return int(url.split('/')[-1])
+    except ValueError:
+        return 0  # Default value in case of parsing error
+
+
+def get_video_info(username):
+    selenium_posts = config.BASE.classes.selenium_posts
+    posts = config.SESS.query(selenium_posts).filter(selenium_posts.username == username, selenium_posts.used==False).order_by(selenium_posts.vid_num).all()
+    urls = [p.post_url for p in posts]
+    # Sorting the URLs based on the numeric part, in descending order
+    sorted_urls = sorted(urls, key=get_numeric_part, reverse=True)    
+    return sorted_urls  
+    
+
+
+
+
 def scrape_account(username, img_block):
     
-    for i in range(8):
-        time.sleep(random.randint(10, 35))
-        try:
-            account_info, videos_to_scrape = run_with_timeout(worker_function_accounts, 360, False, username, img_block)
-            print(account_info)
-            if account_info == None:
-                wait_until_15_to_25_minutes()
-                print("Account info is none, time out, trying again")
-                continue
-            deleted = 'account_deleted' in account_info
-            private = 'account_private' in account_info
-            if deleted:
-                print("user deleted")
-                update_user_and_metrics(username, account_info, end_scrape_date, deleted, private)
-                return
-            if private:
-                print("user private")
-                update_user_and_metrics(username, account_info, end_scrape_date, deleted, private)
-                return
+    urls = get_video_info(username)
 
-            if not len(videos_to_scrape) and account_info['num_posts'] != 0:
-                print("No Videos to scrape, trying again")
-                wait_until_15_to_25_minutes()
-                continue
-            break
-        except Exception as e:
-            print(e)
-            stacktrace_str = traceback.format_exc()
-            print(stacktrace_str)
-            if i == 6:
-                time.sleep(100)
-            if i == 7:
-                print(f"Error getting {username} account info, giving up on try {i + 1}")
-                return
-            print(f"Error getting {username} account info, trying again")
-            print(e)
-            wait_until_15_to_25_minutes()
-            continue
-    
-    vids_stored = 0
-    comments_scraped = 0
-    videos_to_use = []
-    if videos_to_scrape:
-        
-        print(f'{len(videos_to_scrape)} videos fetched')
-        if len(videos_to_scrape):
-            for v in videos_to_scrape:
-                wait_until_15_to_25_minutes()
-                video_info, video_metrics = v
-                # video_url = f'www.tiktok.com/@{username}/video/{v["id"]}'
-                
-                video_url = video_info['post_url']
-                print(f'Trying to scrape {video_url}')
-                print(f'Num comments is {video_metrics["num_comments"]}')
-                utc = pytz.UTC
-                compare_date = datetime.strptime(os.environ.get("end_scrape_date"), '%Y-%m-%d').replace(tzinfo=utc)
-                if video_metrics["date_posted"] > compare_date:
-                    print(f"Video: {video_url} is too new, skipping")
-                    continue
-                compare_date = datetime.strptime(os.environ.get("start_scrape_date"), '%Y-%m-%d').replace(tzinfo=utc)
-                if video_metrics["date_posted"] < compare_date:
-                    print(f"Video: {video_url} is too old, hit the end of the range")
-                    break
-                if get_post(video_url):
-                    print("Already have this post")
-                    continue
-                videos_to_use.append((video_info['post_url'], video_metrics['num_comments']))
-                print(f"Adding {video_info['post_url']} to ttposts")
-                for i in range(3):
-                    try:
-                        add_post(video_info, video_metrics)
-                    except Exception as e:
-                        if i == 2:
-                            print('Last try failed, giving up')
-                            break
-                        stacktrace_str = traceback.format_exc()
-                        print(stacktrace_str)
-                        print(e)
-                        print('trying again')
+    if not len(urls):
+        print('no users yet')
+        print(len(urls))
+        time.sleep(2)
+    videos_to_use = urls
+    fails = 0
     for vid in videos_to_use:
         
-        link, num_comments = vid
+        link = vid
+        if get_post(link):
+            print("Already have this post")
+            continue
+        num_comments = 2000
         print(f"Scraping comments for {link}")
         print(f'Num comments is {num_comments}')
 
@@ -202,14 +155,40 @@ def scrape_account(username, img_block):
                 break
 
         video_info, video_metrics, comment_data_list = vidStuf
+        if video_info == None or video_metrics == None:
+            print("Failed to get video info, skipping")
+            continue
+        if video_metrics['date_posted'].replace(tzinfo=None) < datetime.strptime(start_scrape_date, '%Y-%m-%d'):
+            if fails > 0:
+                print("Old video, hit the end range")
+                break
+            else:
+                print(f"Old video fail {fails}") 
+                fails += 1
+                continue
+            
+        else:
+            print(f'Video from {video_metrics["date_posted"]} in range')
         if video_info != None:
+
+            print(f"Adding {video_info['post_url']} to ttposts")
+            for i in range(3):
+                try:
+                    add_post(video_info, video_metrics)
+                except Exception as e:
+                    if i == 2:
+                        print('Last try failed, giving up')
+                        break
+                    stacktrace_str = traceback.format_exc()
+                    print(stacktrace_str)
+                    print(e)
+                    print('trying again')
+
             print(f'{len(comment_data_list)} comments collected, adding comments to db')
             for i in range(3):
                 try:
                     if len(comment_data_list):
                         add_comments(comment_data_list)
-                    vids_stored += 1
-                    comments_scraped += len(comment_data_list)
                     break
                 except Exception as e:
                     if i == 2:
@@ -220,11 +199,6 @@ def scrape_account(username, img_block):
         else:
             print('Failed to get info for {video_url}')
 
-    if account_info:
-        update_user_and_metrics(username, account_info, end_scrape_date)
-    else:
-        checkout_user(username, None)
-    return vids_stored, comments_scraped
 
     
 

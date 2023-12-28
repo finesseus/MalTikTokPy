@@ -230,7 +230,7 @@ class TikTokAPI:
                         if route.request.resource_type in ["image", "media"]
                         else route.continue_()
                         )
-                page.goto(link_or_id, wait_until=None)
+                
                 page.wait_for_selector("#SIGI_STATE", state="attached")
 
                 link_or_id = page.url
@@ -284,7 +284,13 @@ if (navigator.webdriver === false) {
                 # sleep(1000)
 
                 page.goto(link, wait_until=None)
-
+                # page.goto(link, wait_until=None)
+                # sleep(15)
+                # print('reload')
+                # page.goto(link, wait_until=None)
+                # sleep(15)
+                # print('refresh')
+                # page.reload()
 
 
 

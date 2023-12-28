@@ -52,6 +52,8 @@ def makeTikTokApi(comments=False, img_block=False):
         else:
             proxy = proxy_profile
     
+    # proxy = 'http://rjlrdkcg:tuvlyrqkgpi@38.154.227.167:5868'
+    # proxy = None
     
     # =======
     # proxy = 'http://brd-customer-hl_b6481680-zone-tt_res_proxy_1-country-us:jdck5fevng4r@brd.superproxy.io:22225'
