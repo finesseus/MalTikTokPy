@@ -19,7 +19,7 @@ from dbWriteOperations import add_post, add_comments
 from dbReadOperations import get_post_fuzzy
 from db import create_session, setup_database
 
-
+from sqlalchemy import func
 
 def get_video_and_comments(video_url, num_comments, img_block=False):
     timeout = min(num_comments/7, 300)
@@ -32,7 +32,7 @@ def get_video_and_comments(video_url, num_comments, img_block=False):
             if video_info != None:
                 if bestRes == None and video_info != None:
                     bestRes = (video_info, video_metrics, bestScrapeComments)
-                if len(bestScrapeComments) >= 2000 or not errored_out:
+                if len(bestScrapeComments) >= 1000 or not errored_out:
                     return video_info, video_metrics, bestScrapeComments
                 elif len(bestScrapeComments) > len(bestRes[2]):
                     bestRes = (video_info, video_metrics, bestScrapeComments)
@@ -49,6 +49,7 @@ def get_video_and_comments_workhorse(video_url, img_block=False):
     bestScrapeComments = []
     try:
         with makeTikTokApi(comments=True, img_block=False) as api:
+
             video = api.video(video_url)
 
             # print(video)
@@ -101,10 +102,10 @@ def get_video_and_comments_workhorse(video_url, img_block=False):
                 try:
                     for c in video.comments:
                         # time.sleep(0.1)
-                        if i == 3000:
+                        if i >= 1500:
                             break
                         if i %25 == 0:
-                            print(f"Scraped {i} comments")
+                            print(f"Scraped {i} comments-")
                         i += 1
 
                         comment_data = {
@@ -141,37 +142,37 @@ def get_video_and_comments_workhorse(video_url, img_block=False):
     return video_info, video_metrics, bestScrapeComments, errored_out
 
 
-if __name__ == '__main__':
-    config.SESS = create_session()
-    config.BASE = setup_database(config.SESS)
-    # videoLinks = open('12-14Out.txt', 'r').readlines()[25:37]
+# if __name__ == '__main__':
+#     config.SESS = create_session()
+#     config.BASE = setup_database(config.SESS)
+#     # videoLinks = open('12-14Out.txt', 'r').readlines()[25:37]
     
-    videoLinks = [
-        'https://www.tiktok.com/@robynpridmore/video/7300659060142017825',
-        'https://www.tiktok.com/@jennifermika_/video/7313325763137113374',
-        'https://www.tiktok.com/@amayacrichton/video/7313585990860492078',
-        'https://www.tiktok.com/@allina_ai/video/7314103121817505070',
-        'https://www.tiktok.com/@kristinkonefal/video/7313397367133228318',
-        'https://www.tiktok.com/@fiebuch/video/7313671842500300064',
-        'https://www.tiktok.com/@teefsxo/video/7313774368671239454',
-        'https://www.tiktok.com/@meshtiish/video/7299508394711469318',
-        'https://www.tiktok.com/@jacquelinejohnette/video/7314056877824871723',
-        'https://www.tiktok.com/@chasemariee/photo/7314766099617205546',
-        'https://www.tiktok.com/@aandriamartinezd/video/7314349771362258181',
-        'https://www.tiktok.com/@bellahdismymom/photo/7315458357681212678',
-        'https://www.tiktok.com/@lakshanahall/photo/7316004543551098158'
-            ]
-    for v in videoLinks:
-        print(v)
-        hasPost = get_post_fuzzy(v.strip())
-        if hasPost is not None:
-            print('already has post')
-            time.sleep(2)
-            continue
-        video_info, video_metrics, bestScrapeComments = get_video_and_comments(v.strip(), 4000)
-        add_post(video_info, video_metrics)
-        print('added posts')
-        add_comments(bestScrapeComments)
+#     videoLinks = [
+#         'https://www.tiktok.com/@robynpridmore/video/7300659060142017825',
+#         'https://www.tiktok.com/@jennifermika_/video/7313325763137113374',
+#         'https://www.tiktok.com/@amayacrichton/video/7313585990860492078',
+#         'https://www.tiktok.com/@allina_ai/video/7314103121817505070',
+#         'https://www.tiktok.com/@kristinkonefal/video/7313397367133228318',
+#         'https://www.tiktok.com/@fiebuch/video/7313671842500300064',
+#         'https://www.tiktok.com/@teefsxo/video/7313774368671239454',
+#         'https://www.tiktok.com/@meshtiish/video/7299508394711469318',
+#         'https://www.tiktok.com/@jacquelinejohnette/video/7314056877824871723',
+#         'https://www.tiktok.com/@chasemariee/photo/7314766099617205546',
+#         'https://www.tiktok.com/@aandriamartinezd/video/7314349771362258181',
+#         'https://www.tiktok.com/@bellahdismymom/photo/7315458357681212678',
+#         'https://www.tiktok.com/@lakshanahall/photo/7316004543551098158'
+#             ]
+#     for v in videoLinks:
+#         print(v)
+#         hasPost = get_post_fuzzy(v.strip())
+#         if hasPost is not None:
+#             print('already has post')
+#             time.sleep(2)
+#             continue
+#         video_info, video_metrics, bestScrapeComments = get_video_and_comments(v.strip(), 4000)
+#         add_post(video_info, video_metrics)
+#         print('added posts')
+#         add_comments(bestScrapeComments)
 # get_video_and_comments('https://www.tiktok.com/@jadan.s.m_zay/video/7312166918700453152', 1000)
 
 # get_video_and_comments('www.tiktok.com/@noahbeck/video/7303428892226768158')
@@ -259,17 +260,17 @@ if __name__ == '__main__':
 # def scrapeFYPPageVideos(csvs):
 
 # from accounts import getAccountInfo
-# import config
-# from db import create_session, setup_database
+import config
+from db import create_session, setup_database
 # from dbWriteOperations import update_user_and_metrics, add_post, add_comments, checkout_user
-# from dbReadOperations import get_accounts_ready_to_scrape, get_post
-# from accounts import getAccountInfo, getAccountInfoAPI
-# from byVideo import get_video_and_comments
-# import os
-# from datetime import datetime
-# import pytz
-# import multiprocessing
-# from utils import wait_until_15_to_25_minutes
+from dbReadOperations import get_accounts_ready_to_scrape, get_post, check_post_exists
+from accounts import getAccountInfo, getAccountInfoAPI
+import os
+from datetime import datetime
+import pytz
+import multiprocessing
+from utils import wait_until_15_to_25_minutes
+from dbWriteOperations import add_account, add_accounts, add_post, add_comments
 
 
 # start_scrape_date = '2024-1-11'
@@ -281,15 +282,94 @@ if __name__ == '__main__':
 # display = Display(visible=0, size=(1366, 768))
 # display.start()
 
-# def main():
-#     # img_block = random.choice([True, False])
-#     os.environ['img_block'] = str(False)
-#     img_block = False
-#     # print(img_block)
-#     # exit()
-#     config.SESS = create_session()
-#     print("Created Session")
-#     total_vids_scraped = 0
-#     total_comments_scraped = 0
-#     start_time = time.time()
-#     with config.SESS:
+from dbReadOperations import user_exists
+
+def divide_urls(urls, section, total_sections):
+    """Divide URLs into sections and return the URLs for the specified section."""
+    # Calculate the number of URLs per section
+    urls_per_section = len(urls) // total_sections
+    # Calculate the start and end index of URLs for the specified section
+    start_index = (section - 1) * urls_per_section
+    if section == total_sections:
+        # Ensure the last section includes any remaining URLs
+        end_index = len(urls)
+    else:
+        end_index = start_index + urls_per_section
+    # Return the subset of URLs for the specified section
+    return urls[start_index:end_index]
+
+def scrapeFYPAndRaminpicks(csv, section, total_sections):
+    print("HIIII")
+    # img_block = random.choice([True, False])
+    os.environ['img_block'] = str(False)
+    img_block = False
+    # print(img_block)
+    # exit()
+    config.SESS = create_session()
+    print("Created Session")
+    
+    with config.SESS:
+        df = pd.read_csv(csv)
+        urls = df['link'].tolist()
+        
+        config.BASE = setup_database(config.SESS)
+        # urls = divide_urls()
+        section_urls = divide_urls(urls, section, total_sections)
+        
+        for u in section_urls:
+            url = u.split('?')[0]
+            if check_post_exists(url):
+                print('Post exists, continuing')
+                continue
+
+            username = url.split('@')[1].split('/')[0]
+            
+            for i in range(3):
+                try:
+                    user = user_exists(username)
+                    break
+                except:
+                    continue
+            if not user:
+                for i in range(3):
+                    try:
+                        add_account(username, csv.split('.')[0])
+                        print(f"Added {username}")
+                        break
+                    except:
+                        print(f'Failed to add {username}')
+                        continue
+                video_info, video_metrics, comment_data_list = get_video_and_comments(url, 1500)
+
+                for i in range(3):
+                    try:
+                        res = add_post(video_info, video_metrics)
+                        
+                    except Exception as e:
+                        if i == 2:
+                            print('Last try failed, giving up')
+                            break
+                        stacktrace_str = traceback.format_exc()
+                        print(stacktrace_str)
+                        print(e)
+                        print('trying again')
+                if video_info != None:
+                    print(f'{len(comment_data_list)} comments collected, adding comments to db')
+                    for i in range(3):
+                        try:
+                            if len(comment_data_list):
+                                add_comments(comment_data_list)
+                            break
+                        except Exception as e:
+                            if i == 2:
+                                print('Last try failed, giving up')
+                            stacktrace_str = traceback.format_exc()
+                            print(stacktrace_str)
+                            print(e)
+                else:
+                    print('Failed to get info for {video_url}')
+            else:
+                print('user exists')
+
+# scrapeFYPAndRaminpicks('gerkinOfTheMount.csv', 9, 9)
+# get_video_and_comments('https://www.tiktok.com/@delalic.nives/video/7318813094958959904', 1000)

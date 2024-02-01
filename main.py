@@ -3,7 +3,7 @@ import config
 from db import create_session, setup_database
 from dbWriteOperations import update_user_and_metrics, add_post, add_comments, checkout_user
 from dbReadOperations import get_accounts_ready_to_scrape, get_post
-from accounts import getAccountInfo
+from accounts import getAccountInfo, getAccountInfoAPI
 from byVideo import get_video_and_comments
 import os
 from datetime import datetime
@@ -12,12 +12,13 @@ import traceback
 import time
 import multiprocessing
 import random
+import traceback
 from utils import wait_until_15_to_25_minutes
 
 
-start_scrape_date = '2023-11-29'
+start_scrape_date = '2024-1-25'
 # 28
-end_scrape_date = '2023-12-12'
+end_scrape_date = '2024-1-28'
 os.environ['end_scrape_date'] = end_scrape_date
 os.environ['start_scrape_date'] = start_scrape_date
 
@@ -37,12 +38,18 @@ def main():
     start_time = time.time()
     with config.SESS:
         config.BASE = setup_database(config.SESS)
-        accounts = get_accounts_ready_to_scrape(end_scrape_date)
-        print(f'{len(accounts)} accounts fetched for scraping')
-        while len(accounts):
+        # table_names = config.BASE.classes.keys()
+        # print("List of tables:")
+        # for table_name in table_names:
+        #     print(table_name)
+        # exit()
+
+        account = get_accounts_ready_to_scrape(end_scrape_date)
+        print('Fetched account for scraping')
+        while account:
             # int(len(accounts)/2)
-            username = accounts[0].username
-            checkout_user(accounts[0].username, end_scrape_date)
+            username = account.username
+            # checkout_user(accounts[0].username, end_scrape_date)
 
             print(username)
             res = scrape_account(username, img_block)
@@ -51,7 +58,7 @@ def main():
                 total_comments_scraped += res[1]
             else:
                 print(f"Fail for {username}")
-            accounts = get_accounts_ready_to_scrape(end_scrape_date)
+            account = get_accounts_ready_to_scrape(end_scrape_date)
     print(f'Finished at {time.time() - start_time}')
     print(f'Total videos scraped: {total_vids_scraped}')
     print(f'Total comments scraped: {total_comments_scraped}')
@@ -61,12 +68,13 @@ def main():
 def worker_function_accounts(queue, *args):
     # queue.put((None, None))
     try:
-        account_info, videos_to_scrape = getAccountInfo(*args)
+        account_info, videos_to_scrape = getAccountInfoAPI(*args)
         queue.put((account_info, videos_to_scrape))
         time.sleep(0.5)
     except Exception as e:
         # Log or print the exception for debugging
         print(f"Error in worker_function_accounts: {e}")
+        traceback.print_exc()
         queue.put((None, None))
 
 def worker_function_videos(queue, *args):
@@ -109,13 +117,16 @@ def transform_input(value):
 def scrape_account(username, img_block):
     
     for i in range(8):
-        time.sleep(random.randint(10, 35))
+        # time.sleep(random.randint(10, 35))
         try:
             account_info, videos_to_scrape = run_with_timeout(worker_function_accounts, 360, False, username, img_block)
             print(account_info)
             if account_info == None:
-                wait_until_15_to_25_minutes()
+                # wait_until_15_to_25_minutes()
                 print("Account info is none, time out, trying again")
+                continue
+            if not videos_to_scrape:
+                print('No videos to scrape, trying again')
                 continue
             deleted = 'account_deleted' in account_info
             private = 'account_private' in account_info
@@ -130,7 +141,7 @@ def scrape_account(username, img_block):
 
             if not len(videos_to_scrape) and account_info['num_posts'] != 0:
                 print("No Videos to scrape, trying again")
-                wait_until_15_to_25_minutes()
+                # wait_until_15_to_25_minutes()
                 continue
             break
         except Exception as e:
@@ -144,7 +155,7 @@ def scrape_account(username, img_block):
                 return
             print(f"Error getting {username} account info, trying again")
             print(e)
-            wait_until_15_to_25_minutes()
+            # wait_until_15_to_25_minutes()
             continue
     
     vids_stored = 0
@@ -155,7 +166,7 @@ def scrape_account(username, img_block):
         print(f'{len(videos_to_scrape)} videos fetched')
         if len(videos_to_scrape):
             for v in videos_to_scrape:
-                wait_until_15_to_25_minutes()
+                # wait_until_15_to_25_minutes()
                 video_info, video_metrics = v
                 # video_url = f'www.tiktok.com/@{username}/video/{v["id"]}'
                 
@@ -178,7 +189,8 @@ def scrape_account(username, img_block):
                 print(f"Adding {video_info['post_url']} to ttposts")
                 for i in range(3):
                     try:
-                        add_post(video_info, video_metrics)
+                        res = add_post(video_info, video_metrics)
+                        
                     except Exception as e:
                         if i == 2:
                             print('Last try failed, giving up')

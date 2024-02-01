@@ -6,9 +6,9 @@ driver = webdriver.Chrome()  # Replace with your path to chromedriver
 
 # List of TikTok links to navigate to
 
-f = open('raminLinks12-14.txt', 'r')
+f = open('raminLinks1-20.txt', 'r')
 lines = f.readlines()
-with open('12-14Out.txt', 'w+') as wout:
+with open('ramin.txt', 'w+') as wout:
     for l in lines:
         # driver.get('https://www.tiktok.com/login')
         print("Starting url:")

@@ -15,9 +15,9 @@ import random
 from utils import wait_until_15_to_25_minutes
 
 
-start_scrape_date = '2023-12-13'
+start_scrape_date = '2023-12-27'
 # 28
-end_scrape_date = '2023-12-27'
+end_scrape_date = '2024-1-10'
 os.environ['end_scrape_date'] = end_scrape_date
 os.environ['start_scrape_date'] = start_scrape_date
 
@@ -43,9 +43,11 @@ def main():
             # int(len(accounts)/2)
             # random.shuffle(accounts)
             username = accounts[-1].username
+            updateDate = accounts[-1].pulling_data_last_started
             checkout_user(accounts[0].username, end_scrape_date)
 
             print(username)
+            print(updateDate)
             scrape_account(username, img_block)
             
             accounts = get_accounts_ready_to_scrape(end_scrape_date)
@@ -119,7 +121,9 @@ def get_video_info(username):
     posts = config.SESS.query(selenium_posts).filter(selenium_posts.username == username, selenium_posts.used==False).order_by(selenium_posts.vid_num).all()
     urls = [p.post_url for p in posts]
     # Sorting the URLs based on the numeric part, in descending order
-    sorted_urls = sorted(urls, key=get_numeric_part, reverse=True)    
+    sorted_urls = sorted(urls, key=get_numeric_part, reverse=True)
+    for url in sorted_urls:
+        print(url)    
     return sorted_urls  
     
 
