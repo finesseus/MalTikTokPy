@@ -12,8 +12,7 @@ def file_to_list_of_strings(filename):
 
 def add_accounts(fileName, source):
     account_list = file_to_list_of_strings(fileName)
-    os.environ['AWS_SECRET_ACCESS_KEY'] = 'UlI41MxIytu49/IC4pfaOtLKKqM66p9bFmh2B+NX'
-    os.environ['AWS_ACCESS_KEY_ID'] = 'AKIAXPESWFETSYLBOIP3'
+    
     config.SESS = create_session()
     config.BASE = setup_database(config.SESS)
     TTUsers = config.BASE.classes.ttusers
@@ -52,8 +51,6 @@ def add_accounts(fileName, source):
     print(f"New total # of accounts {query.count()}")
 
 def add_account(account_name, source):
-    os.environ['AWS_SECRET_ACCESS_KEY'] = 'UlI41MxIytu49/IC4pfaOtLKKqM66p9bFmh2B+NX'
-    os.environ['AWS_ACCESS_KEY_ID'] = 'AKIAXPESWFETSYLBOIP3'
     config.SESS = create_session()
     config.BASE = setup_database(config.SESS)
     TTUsers = config.BASE.classes.ttusers
